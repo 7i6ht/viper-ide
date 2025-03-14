@@ -507,8 +507,6 @@ function showBranchInfo(details: BranchFailureDetails): void {
     }
     const branchTree = BranchTree.generate(details.paths);
     exploredBranchesMap.set(details.methodName, new ExploredBranches(branchTree, details.cached));
-    const test = State.exploredBranches.get(details.uri)?.get(details.methodName);
-
 
     // Add diagnostic
     const uri = vscode.Uri.parse(details.uri, false);
