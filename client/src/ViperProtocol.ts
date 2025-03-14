@@ -303,10 +303,26 @@ export interface ProgressParams {
     logLevel: LogLevel;
 }
 
+export interface BranchCondition {
+    condition: string;
+    negated: boolean;
+}
+export interface BranchFailurePath {
+    conditions: BranchCondition[];
+    isResultFatal: boolean;
+}
+export interface BranchClauseRange {
+    ifLine: number;
+    elseLine: number;
+    methodEndLine: number;
+}
 export interface BranchFailureDetails {
-    // errorMessage: string; // tree string
     uri: string;
-    ranges: Range[];
+    methodName: string;
+    methodIdentifierRange: Range;
+    paths: BranchFailurePath[];
+    clauseRange: BranchClauseRange;
+    cached: boolean;
 }
 
 export interface MyProtocolDecorationOptions {

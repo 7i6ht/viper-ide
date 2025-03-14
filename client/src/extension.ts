@@ -31,6 +31,8 @@ import { VerificationController, TaskType, Task } from './VerificationController
 import { ViperApi } from './ViperApi';
 import { Settings } from './Settings';
 import { Location } from 'vs-verification-toolbox';
+import { ExploredBranches } from './ExploredBranches';
+import { BranchTree } from './BranchTree';
 
 let fileSystemWatcher: vscode.FileSystemWatcher;
 
@@ -334,11 +336,16 @@ function registerContextHandlers(context: vscode.ExtensionContext, location: Loc
     }));
 
     // display branches of a method explored by verification
-    context.subscriptions.push(vscode.commands.registerCommand('viper.displayExploredBranches', async (methodName, path) => {
+    context.subscriptions.push(vscode.commands.registerCommand('viper.displayExploredBranches', async (uri,methodName) => {
+      const exploredBranches = State.exploredBranches.get(uri)?.get(methodName);
+      if (!exploredBranches) {
+          return;
+      }
+      await exploredBranches.tree.toDotFile();
       const dotPreviewExt = vscode.extensions.getExtension('tintinweb.graphviz-interactive-preview');
       if (dotPreviewExt) {
         const options = {
-            uri: vscode.Uri.file(path),
+            uri: vscode.Uri.file(BranchTree.DotFilePath),
             title: `Method ${methodName} - Explored branches`
         }
         await vscode.commands.executeCommand("graphviz-interactive-preview.preview.beside", options);
@@ -359,7 +366,7 @@ function showNotReadyHint(): void {
 function registerClientHandlers(): void {
     State.client.onNotification(Commands.StateChange, (params: StateChangeParams) => State.verificationController.handleStateChange(params));
 
-    State.client.onNotification(Commands.BranchFailureDetails, (details: BranchFailureDetails) => showRedBeams(details));
+    State.client.onNotification(Commands.BranchFailureDetails, (details: BranchFailureDetails) => showBranchInfo(details));
         
     State.client.onNotification(Commands.Hint, (data: HintMessage) => {
         Log.hint(data.message, "Viper", data.showSettingsButton);
@@ -481,44 +488,72 @@ export function removeDiagnostics(activeFileOnly: boolean = false): void {
         if (vscode.window.activeTextEditor) {
             const uri = vscode.window.activeTextEditor.document.uri;
             State.diagnosticCollection.delete(uri);
-            clearRedBeams(activeFileOnly);
+            clearBranchInfo(activeFileOnly);
             Log.log(`Diagnostics successfully removed for file ${uri}`, LogLevel.Debug);
         }
     } else {
         State.diagnosticCollection.clear();
-        clearRedBeams();
+        clearBranchInfo();
         Log.log(`All diagnostics successfully removed`, LogLevel.Debug);
     }
 }
 
-function showRedBeams(details: BranchFailureDetails): void {
-    const uri = vscode.Uri.parse(details.uri, false)
-    const textDecorator = getDecorationType();
-    State.textDecorators.set(uri, textDecorator);
-    const decorationOptions = details.ranges.map(r => {
-        return { hoverMessage : new vscode.MarkdownString("Branch fails"),
-                range :    new vscode.Range(
-                               new vscode.Position(r.start.line, r.start.character),
+function showBranchInfo(details: BranchFailureDetails): void {
+    // Store branch tree
+    let exploredBranchesMap = State.exploredBranches.get(details.uri);
+    if (!exploredBranchesMap) {
+        exploredBranchesMap = new Map<string, ExploredBranches>();
+        State.exploredBranches.set(details.uri, exploredBranchesMap)
+    }
+    const branchTree = BranchTree.generate(details.paths);
+    exploredBranchesMap.set(details.methodName, new ExploredBranches(branchTree, details.cached));
+    const test = State.exploredBranches.get(details.uri)?.get(details.methodName);
+
+
+    // Add diagnostic
+    const uri = vscode.Uri.parse(details.uri, false);
+    const cacheFlag = details.cached ? "(cached)" : "";
+    const r = details.methodIdentifierRange;
+    const methodIdnRange = new vscode.Range(new vscode.Position(r.start.line, r.start.character),
                                new vscode.Position(r.end.line, r.end.character)
-                           )
-               }
-    });
+                           );
+    const diagnostic = new vscode.Diagnostic(methodIdnRange,
+        `Branch fails. ${cacheFlag}\n${branchTree.prettyPrint()}`);
+    const diagnostics: vscode.Diagnostic[] = [...State.diagnosticCollection.get(uri), diagnostic];
+    State.diagnosticCollection.set(uri, diagnostics);
+
+    const textDecorator = getDecorationType();
+    State.textDecorators.set(details.uri, textDecorator);
+    const startLine = (branchTree.isRightFatal()) ? details.clauseRange.ifLine : details.clauseRange.elseLine;
+    const endLine = (branchTree.isLeftFatal()) ? details.clauseRange.methodEndLine : details.clauseRange.elseLine;
+    const decorationOptions = [{ hoverMessage : new vscode.MarkdownString("Branch fails"),
+                                 range : new vscode.Range(
+                                       new vscode.Position(startLine, 0),
+                                       new vscode.Position(endLine, 0)
+                                )}];
     vscode.window.activeTextEditor.setDecorations(textDecorator, decorationOptions);
 
     if (State.unitTest) State.unitTest.showRedBeams(decorationOptions);
 }
 
-function clearRedBeams(activeFileOnly: boolean = false): void {
+function clearBranchInfo(activeFileOnly: boolean = false): void {
     if (activeFileOnly) {
         const uri = vscode.window.activeTextEditor.document.uri;
-        const textDecorator = State.textDecorators.get(uri);
-        State.textDecorators.delete(uri);
+        const uriString = uri.toString();
+        const textDecorator = State.textDecorators.get(uriString);
+        State.textDecorators.delete(uriString);
         textDecorator.dispose();
+        State.exploredBranches.get(uriString).clear();
     } else {
         for (const textDecorator of State.textDecorators.values()) {
           textDecorator.dispose();
         }
         State.textDecorators.clear();
+
+        for (const map of State.exploredBranches.values()) {
+             map.clear();
+        }
+        State.exploredBranches.clear();
     }
 }
 

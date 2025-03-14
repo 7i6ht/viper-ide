@@ -25,6 +25,7 @@ import { VerificationController, Task } from './VerificationController';
 import { ViperApi } from './ViperApi';
 import { Settings } from './Settings';
 import { combineMessages, Either, Messages, newEitherError, newRight, transformRight } from "./Either";
+import { ExploredBranches } from './ExploredBranches';
 
 export class State {
     public static get MIN_SERVER_VERSION(): string {
@@ -57,7 +58,8 @@ export class State {
     public static abortButton: StatusBar;
     
     public static diagnosticCollection: vscode.DiagnosticCollection;
-    public static textDecorators: Map<vscode.Uri, vscode.TextEditorDecorationType>;
+    public static textDecorators: Map<string, vscode.TextEditorDecorationType>; // uri - text decoration
+    public static exploredBranches: Map<string, Map<string, ExploredBranches>>; // uri - method - exploredBranches
 
     public static viperApi: ViperApi;
 
@@ -92,7 +94,8 @@ export class State {
         this.showViperStatusBarItems();
         
         this.diagnosticCollection = vscode.languages.createDiagnosticCollection();
-        this.textDecorators = new Map<vscode.Uri, vscode.TextEditorDecorationType>();
+        this.textDecorators = new Map<string, vscode.TextEditorDecorationType>();
+        this.exploredBranches = new Map<string, Map<string, ExploredBranches>>();
     }
 
     public static showViperStatusBarItems():  void {
