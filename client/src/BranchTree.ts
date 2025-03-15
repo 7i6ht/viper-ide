@@ -67,38 +67,35 @@ export class BranchTree {
   }
 
   private static incrementIfFatal(currBranchResultFatal: number, isResultFatal: boolean) : number {
-    return isResultFatal ? Math.max(currBranchResultFatal,0)+1 : currBranchResultFatal;
+    return isResultFatal && currBranchResultFatal>0 ? Math.max(currBranchResultFatal,0)+1 : currBranchResultFatal;
   }
 
   private extend(path : BranchCondition[], isResultFatal: boolean) : void  {
-    if (!this.isLeaf && path.length !== 0) {
-      const negated = path[0].negated;
-      const tail = path.slice(1);
-
-      const headExp = tail[0].condition;
-      if (!this.left.isLeaf && headExp === this.left.condition && negated) {
-        this.leftResFatalCount = BranchTree.incrementIfFatal(this.leftResFatalCount,isResultFatal);
-        this.left.extend(tail.slice(1), isResultFatal);
-      } else if (!this.right.isLeaf && headExp === this.right.condition && !negated) {
-        this.rightResFatalCount = BranchTree.incrementIfFatal(this.rightResFatalCount,isResultFatal);
-        this.right.extend(tail.slice(1), isResultFatal);
+    if (this.isLeaf || path.length === 0) { return; }
+    const negated = path[0].negated;
+    const tail = path.slice(1);
+    if (!this.left.isLeaf && tail.length > 0 && tail[0].condition === this.left.condition && negated) {
+      this.leftResFatalCount = BranchTree.incrementIfFatal(this.leftResFatalCount,isResultFatal);
+      this.left.extend(tail, isResultFatal);
+    } else if (!this.right.isLeaf && tail.length > 0 && tail[0].condition === this.right.condition && !negated) {
+      this.rightResFatalCount = BranchTree.incrementIfFatal(this.rightResFatalCount,isResultFatal);
+      this.right.extend(tail, isResultFatal);
+    } else {
+      const errorCount = (isResultFatal) ?  1 : -1;
+      const bfp = <BranchFailurePath>{conditions: tail, isResultFatal: isResultFatal};
+      const subTree = BranchTree.generate([bfp]);// -1 for successful result
+      if (negated) {
+        this.left = subTree;
+        this.leftResFatalCount = errorCount;
       } else {
-        const errorCount = (isResultFatal) ?  1 : -1;
-        const bfp = <BranchFailurePath>{conditions: tail, isResultFatal: isResultFatal};
-        const subTree = BranchTree.generate([bfp]);// -1 for successful result
-        if (negated) {
-          this.left = subTree;
-          this.leftResFatalCount = errorCount;
-        } else {
-          this.right = subTree;
-          this.rightResFatalCount = errorCount;
-        }
+        this.right = subTree;
+        this.rightResFatalCount = errorCount;
       }
     }
   }
 
 
-  private static even(n: number) : boolean { return (n & 1) == 0; }
+  private static even(n: number) : boolean { return (n & 1) === 0; }
   private buildTreeStrRec(fatalCount: number) : [string[], number, number] {
     if (this.isLeaf && fatalCount === -1) {
         return [["✔"], 0, 0];
@@ -178,7 +175,6 @@ export class BranchTree {
   }
 
   private static fill(vec : string[], filler :number): string[] {
-
     for (let i = 0; i < vec.length; i+=4) {
         vec[i] = " ".repeat(filler) + vec[i] + " ".repeat(filler);
         vec[i+1] = " ".repeat(filler) + vec[i+1] + "─".repeat(filler);
@@ -239,7 +235,7 @@ export class BranchTree {
   }
 
   public prettyPrint() : string {
-    if (this.getErrorCount() === 1) { // Verifier.config.numberOfErrorsToReport() == 1 // TODO
+    if (this.getErrorCount() === 1) {
       return this.buildPathStr();
     } else {
       return this.buildTreeStr()[0].reduce((str, s) => str + "\n" + s) + "\n";
