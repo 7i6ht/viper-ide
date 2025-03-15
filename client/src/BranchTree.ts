@@ -183,9 +183,7 @@ export class BranchTree {
     }
     return vec;
   }
-  private buildPathStr(maxBoxLen : number = 5) : string { // default =5 for 'Error'
-    let path : string[] = [];
-    const side : string[] = [];
+  private buildPathStr(maxBoxLen : number = 5, path: string[] = [], side: string[] = []) : string { // default =5 for 'Error'
     if (!this.isLeaf) {
       const expStr = this.condition;
       const halfExpStrLen = Math.floor(expStr.length / 2);
@@ -208,13 +206,15 @@ export class BranchTree {
       maxBoxLen = Math.max(maxBoxLen, boxLen);
 
       const fatalCount_= this.isRightFatal() ? this.leftResFatalCount : this.rightResFatalCount;
-      const sideRes_ = (fatalCount_===1) ? ["\n"," ✔\n","\n","\n"] : 
+      const sideRes_ = (fatalCount_===1) ? ["\n"," Error\n","\n","\n"] :
                           (fatalCount_===0) ? ["\n"," ?\n","\n","\n"] 
-                          : ["\n"," Error\n","\n","\n"];
+                          : ["\n"," ✔\n","\n","\n"];
       sideRes_.forEach(e => side.push(e));
      
       box.forEach(e => path.push(e));
-      return this.isRightFatal() ? this.right.buildPathStr(maxBoxLen) : this.left.buildPathStr(maxBoxLen); // influenced by order of verification results (true branch results before left)
+      return this.isRightFatal()
+            ? this.right.buildPathStr(maxBoxLen,path,side)
+            : this.left.buildPathStr(maxBoxLen,path,side); // influenced by order of verification results (true branch results before left)
     } else {
         const filler = Math.floor(maxBoxLen/2);
         const combined = BranchTree.zip(path,side);
@@ -228,9 +228,9 @@ export class BranchTree {
 
   public getErrorCount(): number {
     if (this.isLeaf) {
-      return Math.max(this.leftResFatalCount,0) + Math.max(this.rightResFatalCount,0);
-    } else {
       return 0;
+    } else {
+      return Math.max(this.leftResFatalCount,0) + Math.max(this.rightResFatalCount,0);
     }
   }
 

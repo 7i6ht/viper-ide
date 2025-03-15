@@ -520,6 +520,7 @@ function showBranchInfo(details: BranchFailureDetails): void {
     const diagnostics: vscode.Diagnostic[] = [...State.diagnosticCollection.get(uri), diagnostic];
     State.diagnosticCollection.set(uri, diagnostics);
 
+    // Show red beams
     const textDecorator = getDecorationType();
     State.textDecorators.set(details.uri, textDecorator);
     const startLine = (branchTree.isRightFatal()) ? details.clauseRange.ifLine : details.clauseRange.elseLine;
@@ -531,7 +532,10 @@ function showBranchInfo(details: BranchFailureDetails): void {
                                 )}];
     vscode.window.activeTextEditor.setDecorations(textDecorator, decorationOptions);
 
-    if (State.unitTest) State.unitTest.showRedBeams(decorationOptions);
+    if (State.unitTest) {
+        State.unitTest.showRedBeams(decorationOptions);
+        State.unitTest.updateDiagnostics(diagnostics);
+    }
 }
 
 function clearBranchInfo(activeFileOnly: boolean = false): void {

@@ -27,8 +27,6 @@ export const EMPTY = 'empty.sil';
 export const EMPTY_TXT = 'empty.txt';
 export const LONG = 'longDuration.vpr';
 export const WARNINGS = 'warnings.vpr';
-export const BRANCH1 = 'branch1.vpr'
-export const BRANCH2 = 'branch2.vpr'
 
 
 export default class TestHelper {
@@ -123,6 +121,14 @@ export default class TestHelper {
 
     public static resetErrors(): void {
         TestHelper.callbacks.resetInternalError();
+    }
+
+    public static resetDecorationOptions(): void {
+        TestHelper.callbacks.resetDecorationOptions();
+    }
+
+    public static resetDiagnostics(): void {
+        TestHelper.callbacks.resetDiagnostics();
     }
 
     public static hasObservedInternalError(): boolean {
@@ -245,7 +251,7 @@ export default class TestHelper {
     public static waitForVerification(fileName: string, backend?: string): Promise<void> {
         return new Promise(resolve => {
             TestHelper.callbacks.verificationComplete = (b, f) => {
-                TestHelper.log(`Verification Completed: file: ${f}, backend: ${b}`);
+                console.log(f);
                 if ((!backend || b.toLowerCase() === backend.toLowerCase()) && f === fileName) {
                     resolve();
                 }
@@ -343,11 +349,16 @@ export default class TestHelper {
     public static getDecorationOptions(): object[] {
         return TestHelper.callbacks.decorationOptions;
     }
+
+    public static getUpdatedDiagnostics(): vscode.Diagnostic[] {
+        return TestHelper.callbacks.updatedDiagnostics;
+    }
 }
 
 class UnitTestCallbackImpl implements UnitTestCallback {
     private errorDetected = false;
-    private decorationOptions_ = null;
+    private decorationOptions_ = [];
+    private updatedDiagnostics_ : vscode.Diagnostic[] = [];
 
     public get internalError(): boolean {
         return this.errorDetected;
@@ -361,6 +372,18 @@ class UnitTestCallbackImpl implements UnitTestCallback {
         return this.decorationOptions_;
     }
 
+    public get updatedDiagnostics(): vscode.Diagnostic[] {
+        return this.updatedDiagnostics_;
+    }
+
+    public resetDecorationOptions(): void {
+        this.decorationOptions_ = [];
+    }
+
+    public resetDiagnostics(): void {
+        this.updatedDiagnostics_ = [];
+    }
+
     extensionActivated: () => void = () => { };
     extensionRestarted: () => void = () => { };
     backendStarted: (backend: string) => void = () => { };
@@ -372,4 +395,5 @@ class UnitTestCallbackImpl implements UnitTestCallback {
     verificationStopped: (success: boolean) => void = () => { };
     verificationStarted: (backend: string, filename: string) => void = () => { };
     showRedBeams: (decorationOptions: vscode.DecorationOptions[]) => void = (opts) => {this.decorationOptions_ = opts};
+    updateDiagnostics: (diagnostics: vscode.Diagnostic[]) => void = (diagnostics) => {this.updatedDiagnostics_ = diagnostics};
 }

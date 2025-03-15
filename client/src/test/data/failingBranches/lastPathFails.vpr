@@ -6,14 +6,14 @@ ensures P(z) {
     if (a) {
        if (bcde) {
             z := (bcde && a)
-        } else {
+       } else {
             z := !(bcde && !a)
-        }
+       }
     } else {
         if (c) {
             z := !(c && a)
         } else {
-            z := !(!c && !a)
+            z := !(!c && !a) // failure
         }
     }
 }

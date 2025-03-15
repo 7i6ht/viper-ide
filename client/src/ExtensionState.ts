@@ -356,6 +356,7 @@ export interface UnitTestCallback {
     verificationStopped: (success: boolean) => void;
     verificationStarted: (backend: string, filename: string) => void;
     showRedBeams: (decorationOptions: object[]) => void
+    updateDiagnostics: (diagnostics: vscode.Diagnostic[]) => void
 }
 
 type Disposable = { dispose(): any }; // eslint-disable-line @typescript-eslint/no-explicit-any
