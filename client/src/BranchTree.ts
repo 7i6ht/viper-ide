@@ -26,8 +26,6 @@ export class BranchTree {
   public isLeftFatal() : boolean { return this.leftResFatalCount > 0;}
   public isRightFatal() : boolean { return this.rightResFatalCount > 0; }
 
-  public static DotFilePath = `${Helper.getLogDir()}/BranchTree.dot`;
-
   private static generatePathRec(expressions: BranchCondition[], errorCount: number, result: BranchTree): BranchTree {
     if (expressions.length === 0) {
       return result;
@@ -289,11 +287,13 @@ export class BranchTree {
     }
   }
 
-  public async toDotFile(): Promise<void> {
-    const writer = await fs.createWriteStream(BranchTree.DotFilePath);
+  public async toDotFile(): Promise<string> {
+    const tempDirPath = `${Helper.getTempDir()}/BranchTree.dot`;
+    const writer = await fs.createWriteStream(tempDirPath);
     writer.write("digraph {\n");
     this.writeDotFileRec(writer);
     writer.write("}\n");
     await writer.close();
+    return tempDirPath;
   }
 }
