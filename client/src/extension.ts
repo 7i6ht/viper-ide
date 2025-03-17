@@ -341,11 +341,11 @@ function registerContextHandlers(context: vscode.ExtensionContext, location: Loc
       if (!exploredBranches) {
           return;
       }
-      await exploredBranches.tree.toDotFile();
+      const dotFilePath = await exploredBranches.tree.toDotFile();
       const dotPreviewExt = vscode.extensions.getExtension('tintinweb.graphviz-interactive-preview');
       if (dotPreviewExt) {
         const options = {
-            uri: vscode.Uri.file(BranchTree.DotFilePath),
+            uri: vscode.Uri.file(dotFilePath),
             title: `Method ${methodName} - Explored branches`
         }
         await vscode.commands.executeCommand("graphviz-interactive-preview.preview.beside", options);

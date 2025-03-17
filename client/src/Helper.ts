@@ -82,6 +82,18 @@ export class Helper {
         return logDir;
     }
 
+    /**
+     * Returns the temporary directory.
+     * The directory will be created if it does not exist yet
+     */
+     public static getTempDir(): string {
+        let tmpDir = path.join(os.tmpdir(), ".vscode");
+        if (!fs.existsSync(tmpDir)) {
+            fs.mkdirSync(tmpDir, { recursive: true });
+        }
+        return tmpDir;
+    }
+
     public static getGitHubToken(): string {
         return process.env["GITHUB_TOKEN"];
     }
